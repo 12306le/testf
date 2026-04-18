@@ -99,6 +99,14 @@ jobs:
           path: /tmp/build.log
           if-no-files-found: ignore
 
+      - name: Publish failure tail to Summary
+        if: failure()
+        run: |
+          echo '## Build failure tail' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -c 40000 /tmp/build.log >> $GITHUB_STEP_SUMMARY || echo '(no log)' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
