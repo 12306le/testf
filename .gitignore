@@ -1,0 +1,28 @@
+# Build output
+build/
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+pubspec.lock
+
+# Android
+android/.gradle/
+android/local.properties
+android/**/GeneratedPluginRegistrant.java
+android/app/release/
+android/app/debug/
+*.keystore
+*.jks
+key.properties
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata

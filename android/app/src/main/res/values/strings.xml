@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">自动点击器</string>
+    <string name="accessibility_description">开启后可执行自动点击、滑动等手势操作。仅用于在本设备模拟输入,不会上传任何数据。</string>
+</resources>
