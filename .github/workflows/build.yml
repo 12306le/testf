@@ -56,6 +56,24 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Fill missing scaffolding (wrapper + launcher icons)
+        run: |
+          set -e
+          TMP=$(mktemp -d)
+          flutter create --platforms=android --org com.autoclicker --project-name auto_clicker_tmp "$TMP/tmp_app" >/dev/null
+          mkdir -p android/gradle/wrapper
+          cp -n "$TMP/tmp_app/android/gradle/wrapper/gradle-wrapper.jar" android/gradle/wrapper/ 2>/dev/null || true
+          cp -n "$TMP/tmp_app/android/gradle/wrapper/gradle-wrapper.properties" android/gradle/wrapper/ 2>/dev/null || true
+          cp -n "$TMP/tmp_app/android/gradlew" android/ 2>/dev/null || true
+          cp -n "$TMP/tmp_app/android/gradlew.bat" android/ 2>/dev/null || true
+          chmod +x android/gradlew || true
+          for d in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+            mkdir -p "android/app/src/main/res/$d"
+            cp -n "$TMP/tmp_app/android/app/src/main/res/$d/ic_launcher.png" "android/app/src/main/res/$d/ic_launcher.png" 2>/dev/null || true
+          done
+          echo "--- android/ tree ---"
+          ls -la android/ android/gradle/wrapper/ android/app/src/main/res/mipmap-mdpi/ || true
+
       - name: Show Flutter info
         run: |
           flutter --version
@@ -63,7 +81,7 @@ jobs:
 
       - name: Build APK (debug)
         if: github.event_name != 'workflow_dispatch' || inputs.build_type == 'debug'
-        run: flutter build apk --debug --target-platform android-arm64
+        run: flutter build apk --debug --target-platform android-arm64 --verbose
 
       - name: Build APK (release)
         if: github.event_name == 'workflow_dispatch' && inputs.build_type == 'release'
