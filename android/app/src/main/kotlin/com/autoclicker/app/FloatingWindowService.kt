@@ -117,20 +117,22 @@ class FloatingWindowService : Service() {
                 MotionEvent.ACTION_DOWN -> {
                     downX = ev.rawX; downY = ev.rawY
                     startX = lp.x; startY = lp.y; moved = false
-                    false
+                    true   // 必须 true 才能收到后续 MOVE/UP
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (ev.rawX - downX).toInt()
                     val dy = (ev.rawY - downY).toInt()
                     if (abs(dx) > 8 || abs(dy) > 8) moved = true
-                    lp.x = startX + dx
-                    lp.y = startY + dy
-                    try { wm.updateViewLayout(panel, lp) } catch (_: Exception) {}
+                    if (moved) {
+                        lp.x = startX + dx
+                        lp.y = startY + dy
+                        try { wm.updateViewLayout(panel, lp) } catch (_: Exception) {}
+                    }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!moved) { v.performClick() }
-                    moved
+                    if (!moved) v.performClick()  // 纯点击才 toggle,拦截系统再次触发
+                    true
                 }
                 else -> false
             }
