@@ -52,9 +52,9 @@ class AutoClickerApp extends StatelessWidget {
       useMaterial3: true,
       colorScheme: cs,
       scaffoldBackgroundColor: cs.surface,
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         elevation: 0,
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+        color: cs.surfaceContainerHighest.withOpacity(0.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         margin: EdgeInsets.zero,
       ),

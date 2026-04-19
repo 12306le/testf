@@ -244,7 +244,7 @@ class _StatusBanner extends StatelessWidget {
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: (color ?? cs.primary).withValues(alpha: 0.1),
+        color: (color ?? cs.primary).withOpacity(0.1),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -386,7 +386,7 @@ class _OverlayPainter extends CustomPainter {
         ..strokeWidth = 2
         ..style = PaintingStyle.stroke;
       final fill = Paint()
-        ..color = Colors.greenAccent.withValues(alpha: 0.12);
+        ..color = Colors.greenAccent.withOpacity(0.12);
       for (final l in lines) {
         final path = Path();
         for (int i = 0; i < 4; i++) {
@@ -420,7 +420,7 @@ class _OverlayPainter extends CustomPainter {
         ..style = PaintingStyle.stroke;
       canvas.drawRect(sel!, p);
       canvas.drawRect(sel!, Paint()
-        ..color = Colors.redAccent.withValues(alpha: 0.12));
+        ..color = Colors.redAccent.withOpacity(0.12));
     }
   }
 

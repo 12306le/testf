@@ -80,7 +80,7 @@ class _Header extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [cs.primary, cs.primary.withValues(alpha: 0.7), cs.secondary],
+          colors: [cs.primary, cs.primary.withOpacity(0.7), cs.secondary],
         ),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(28),
@@ -187,7 +187,7 @@ class _PermCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final okColor = Colors.green.shade600;
-    final tint = ok ? okColor.withValues(alpha: 0.12) : cs.surfaceContainerHigh;
+    final tint = ok ? okColor.withOpacity(0.12) : cs.surfaceContainerHigh;
     return Material(
       color: tint,
       borderRadius: BorderRadius.circular(16),
@@ -200,7 +200,7 @@ class _PermCard extends StatelessWidget {
             Container(
               width: 36, height: 36,
               decoration: BoxDecoration(
-                color: ok ? okColor.withValues(alpha: 0.2) : cs.primary.withValues(alpha: 0.12),
+                color: ok ? okColor.withOpacity(0.2) : cs.primary.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: busy
@@ -462,7 +462,7 @@ class _RunLogPanelState extends State<_RunLogPanel> {
       color: on ? Colors.greenAccent : Colors.grey,
       shape: BoxShape.circle,
       boxShadow: on ? [BoxShadow(
-        color: Colors.greenAccent.withValues(alpha: 0.6),
+        color: Colors.greenAccent.withOpacity(0.6),
         blurRadius: 8, spreadRadius: 2)] : null,
     ),
   );
