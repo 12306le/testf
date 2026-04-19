@@ -1,15 +1,15 @@
 # Build native OCR library (libNative.so) using Paddle Lite + OpenCV.
-# third-party libs live under app/third_party/{paddle_lite,opencv4.1.0},
-# downloaded at build time by the fetchNativeDeps Gradle task.
+# Paddle Lite header/so live directly in the repo;
+# OpenCV is downloaded by Gradle task and extracted to app/opencv/opencv4.1.0/.
 
 cmake_minimum_required(VERSION 3.10.2)
+project(Native CXX)
 
-set(THIRD_PARTY "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party")
-set(PaddleLite_DIR "${THIRD_PARTY}/paddle_lite")
-# OpenCV 包 cmake 依赖 5 层 PATH 上探,必须放在 app/opencv/opencv4.1.0/<abi>/cmake
+# Paddle Lite (header committed to repo, so bundled in jniLibs)
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/paddle_lite_include")
+
+# OpenCV 4.1 包里 cmake 依赖 5 层 PATH 上探,必须解压到 app/opencv/opencv4.1.0/<abi>/cmake
 set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../opencv/opencv4.1.0/${ANDROID_ABI}/cmake")
-
-include_directories(${PaddleLite_DIR}/cxx/include)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
@@ -25,7 +25,7 @@ add_library(Native SHARED
 add_library(paddle_light_api_shared SHARED IMPORTED)
 set_target_properties(paddle_light_api_shared PROPERTIES
     IMPORTED_LOCATION
-    ${PaddleLite_DIR}/cxx/libs/${ANDROID_ABI}/libpaddle_light_api_shared.so)
+    "${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libpaddle_light_api_shared.so")
 
 find_library(log-lib log)
 find_library(jnigraphics-lib jnigraphics)
