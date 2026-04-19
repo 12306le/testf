@@ -29,10 +29,8 @@ class AppState extends ChangeNotifier {
     _native.ensureListening();
     _native.events.listen(_onEvent);
     _refreshAll();
-    // 后台预加载 OCR 模型,不阻塞启动
-    Future.delayed(const Duration(seconds: 1), () {
-      _native.initOcr();
-    });
+    // OCR 模型不再自动预加载,让用户在"OCR 模型"卡片或进 OCR 测试页时手动触发
+    // (加载过程涉及 native so 初始化,在设备上不稳定)
   }
 
   Future<void> _refreshAll() async {

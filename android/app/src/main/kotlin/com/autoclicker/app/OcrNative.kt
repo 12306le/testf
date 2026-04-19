@@ -31,4 +31,7 @@ object OcrNative {
     @JvmStatic external fun nativeRelease(ctx: Long): Boolean
 
     @JvmStatic external fun nativeRunBitmap(ctx: Long, bitmap: Bitmap): Array<Result>?
+
+    /** 由 CrashReporter 调用,传一个持久化路径让 native 层 segfault 时把信息写进去。 */
+    @JvmStatic external fun installCrashHandler(crashFilePath: String)
 }

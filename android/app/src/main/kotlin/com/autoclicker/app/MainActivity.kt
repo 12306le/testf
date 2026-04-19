@@ -28,6 +28,12 @@ class MainActivity : FlutterActivity() {
 
     private var pendingMediaProjection: MethodChannel.Result? = null
 
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        // 第一时间装上崩溃上报,之后任何异常都能捕获
+        try { CrashReporter.install(applicationContext) } catch (_: Throwable) {}
+        super.onCreate(savedInstanceState)
+    }
+
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 

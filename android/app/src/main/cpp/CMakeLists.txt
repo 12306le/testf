@@ -20,7 +20,7 @@ set(CMAKE_SHARED_LINKER_FLAGS
 
 add_library(Native SHARED
     Native.cc pipeline.cc utils.cc cls_process.cc rec_process.cc
-    det_process.cc db_post_process.cc clipper.cpp)
+    det_process.cc db_post_process.cc clipper.cpp crash_handler.cc)
 
 add_library(paddle_light_api_shared SHARED IMPORTED)
 set_target_properties(paddle_light_api_shared PROPERTIES
