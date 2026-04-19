@@ -15,6 +15,37 @@ if (localPropertiesFile.exists()) {
 def flutterVersionCode = localProperties.getProperty('flutter.versionCode') ?: '1'
 def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '1.0'
 
+// 下载 Paddle Lite 原生库 + OpenCV,只在首次构建执行
+def thirdParty = file("${projectDir}/third_party")
+def paddleDir = file("${thirdParty}/paddle_lite")
+def opencvDir = file("${thirdParty}/opencv4.1.0")
+
+task fetchNativeDeps {
+    outputs.dir paddleDir
+    outputs.dir opencvDir
+    doLast {
+        thirdParty.mkdirs()
+        if (!new File(paddleDir, "cxx/include/paddle_api.h").exists()) {
+            println "Downloading Paddle Lite cxx libs..."
+            def tmp = new File(thirdParty, "paddle.tar.gz")
+            new URL("https://paddlelite-demo.bj.bcebos.com/libs/android/paddle_lite_libs_v2_10_rc.tar.gz")
+                .withInputStream { i -> tmp.withOutputStream { o -> o << i } }
+            paddleDir.mkdirs()
+            exec { commandLine 'tar', 'xzf', tmp.absolutePath, '-C', paddleDir.absolutePath }
+            tmp.delete()
+        }
+        if (!new File(opencvDir, "arm64-v8a/cmake/OpenCVConfig.cmake").exists()) {
+            println "Downloading OpenCV 4.1.0..."
+            def tmp = new File(thirdParty, "ocv.tar.gz")
+            new URL("https://paddle-inference-dist.bj.bcebos.com/opencv4.1.0.tar.gz")
+                .withInputStream { i -> tmp.withOutputStream { o -> o << i } }
+            exec { commandLine 'tar', 'xzf', tmp.absolutePath, '-C', thirdParty.absolutePath }
+            tmp.delete()
+        }
+    }
+}
+preBuild.dependsOn fetchNativeDeps
+
 android {
     namespace "com.autoclicker.app"
     compileSdk 34
@@ -28,6 +59,7 @@ android {
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
+        main.jniLibs.srcDirs += 'src/main/jniLibs'
     }
 
     defaultConfig {
@@ -36,11 +68,31 @@ android {
         targetSdk 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+        ndk { abiFilters 'arm64-v8a' }  // 只出 arm64,减小包体积
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared', '-DANDROID_TOOLCHAIN=clang'
+                cppFlags "-std=c++11 -O3"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
+    }
+
+    packagingOptions {
+        jniLibs {
+            // 避免与 Paddle Lite 携带的 libc++_shared.so 冲突
+            pickFirsts += ['**/libc++_shared.so']
+        }
     }
 
     signingConfigs {
         release {
-            // CI 里用环境变量注入,本地 debug 默认用 debug key
             def keystorePath = System.getenv("KEYSTORE_PATH")
             if (keystorePath) {
                 storeFile file(keystorePath)
@@ -63,6 +115,7 @@ android {
 flutter { source '../..' }
 
 dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
     implementation "androidx.core:core-ktx:1.13.1"
     implementation "androidx.appcompat:appcompat:1.7.0"

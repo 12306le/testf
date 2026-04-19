@@ -143,6 +143,7 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
         _typeTile(ctx, '判色', 'checkColor', Icons.colorize),
         _typeTile(ctx, '找色', 'findColor', Icons.color_lens),
         _typeTile(ctx, '找图', 'findImage', Icons.image_search),
+        _typeTile(ctx, '找字 (OCR)', 'findText', Icons.text_fields),
         _typeTile(ctx, '循环', 'loop', Icons.repeat),
         _typeTile(ctx, '停止', 'stop', Icons.stop_circle_outlined),
       ])),
@@ -171,6 +172,7 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
       case 'checkColor': return {'x': 100, 'y': 100, 'argb': 0xFF00FF00, 'tolerance': 10};
       case 'findColor':  return {'argb': 0xFF00FF00, 'tolerance': 10, 'clickOnFound': true};
       case 'findImage':  return {'path': '', 'threshold': 0.9, 'clickOnFound': true};
+      case 'findText':   return {'text': '', 'contains': true, 'clickOnFound': true};
       case 'loop':       return {'times': 3, 'actions': <Map<String, dynamic>>[]};
       default: return {};
     }
@@ -262,6 +264,27 @@ class _ActionEditDialogState extends State<ActionEditDialog> {
           _numField('threshold', '阈值 0~1', isDouble: true),
           _boolField('clickOnFound', '命中后点击'),
           _roiField(),
+        ]);
+      case 'findText':
+        return Column(mainAxisSize: MainAxisSize.min, children: [
+          TextFormField(
+            initialValue: (p['text'] ?? '').toString(),
+            decoration: const InputDecoration(
+              labelText: '要找的文本',
+              hintText: '例如: 开始 / 确定 / Login',
+              isDense: true,
+            ),
+            onChanged: (v) => p['text'] = v,
+          ),
+          const SizedBox(height: 8),
+          _boolField('contains', '包含匹配 (关则精确相等)'),
+          _boolField('clickOnFound', '命中后点击'),
+          _roiField(),
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text('提示:首次运行需要加载 OCR 模型,约 1-2 秒',
+                style: TextStyle(fontSize: 12, color: Colors.grey)),
+          ),
         ]);
       case 'loop':
         return Column(mainAxisSize: MainAxisSize.min, children: [

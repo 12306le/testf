@@ -37,6 +37,10 @@ class ScriptAction {
       case 'findImage':
         return '找图 阈值 ${params['threshold'] ?? 0.9}'
             '${params['clickOnFound'] == true ? ' 并点击' : ''}';
+      case 'findText':
+        return '找字 "${params['text']}"'
+            '${params['contains'] == false ? ' (精确)' : ''}'
+            '${params['clickOnFound'] == true ? ' 并点击' : ''}';
       case 'loop':
         final n = (params['actions'] as List?)?.length ?? 0;
         return '循环 ${params['times']}次 · $n 个子步骤';

@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Rect
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
@@ -17,6 +18,9 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
@@ -50,7 +54,9 @@ class MainActivity : FlutterActivity() {
                         "accessibility" to isAccessibilityEnabled(),
                         "capture" to ScreenCaptureService.isRunning(),
                         "floating" to FloatingWindowService.isRunning(),
-                        "running" to ScriptRunnerService.isRunning()
+                        "running" to ScriptRunnerService.isRunning(),
+                        "ocr" to OcrPredictor.isReady(),
+                        "ocrLoading" to OcrPredictor.isLoading()
                     ))
                     "openOverlaySettings" -> { openOverlaySettings(); result.success(null) }
                     "openAccessibilitySettings" -> {
@@ -101,6 +107,61 @@ class MainActivity : FlutterActivity() {
                         moveTaskToBack(true)
                         PointPickerOverlay.show(applicationContext, pickColor = color)
                         result.success(true)
+                    }
+                    "initOcr" -> {
+                        NativeBridge.sendEvent("state.ocr", mapOf("ready" to OcrPredictor.isReady(), "loading" to true))
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val ok = OcrPredictor.init(applicationContext)
+                            NativeBridge.sendEvent("state.ocr", mapOf("ready" to ok, "loading" to false))
+                        }
+                        result.success(true)
+                    }
+                    "ocrRecognizeFile" -> {
+                        val path = call.argument<String>("path") ?: ""
+                        val roi = call.argument<List<Int>>("roi")
+                        if (!OcrPredictor.isReady()) {
+                            OcrPredictor.init(applicationContext)
+                        }
+                        val bmp = BitmapFactory.decodeFile(path)
+                        if (bmp == null) { result.success(null); return@setMethodCallHandler }
+                        val outcome = if (roi != null && roi.size == 4) {
+                            OcrPredictor.recognizeRoi(bmp, Rect(roi[0], roi[1], roi[2], roi[3]))
+                        } else OcrPredictor.recognize(bmp)
+                        val offX = roi?.get(0) ?: 0
+                        val offY = roi?.get(1) ?: 0
+                        val lines = outcome.lines.map { r ->
+                            mapOf(
+                                "text" to r.text,
+                                "score" to r.score,
+                                "box" to r.box.mapIndexed { i, v ->
+                                    if (i % 2 == 0) v + offX else v + offY
+                                }
+                            )
+                        }
+                        result.success(mapOf("elapsedMs" to outcome.elapsedMs, "lines" to lines))
+                    }
+                    "ocrRecognizeFrame" -> {
+                        val roi = call.argument<List<Int>>("roi")
+                        if (!OcrPredictor.isReady()) {
+                            OcrPredictor.init(applicationContext)
+                        }
+                        val bmp = ScreenCaptureService.instance?.acquireBitmap()
+                        if (bmp == null) { result.success(null); return@setMethodCallHandler }
+                        val outcome = if (roi != null && roi.size == 4) {
+                            OcrPredictor.recognizeRoi(bmp, Rect(roi[0], roi[1], roi[2], roi[3]))
+                        } else OcrPredictor.recognize(bmp)
+                        val offX = roi?.get(0) ?: 0
+                        val offY = roi?.get(1) ?: 0
+                        val lines = outcome.lines.map { r ->
+                            mapOf(
+                                "text" to r.text,
+                                "score" to r.score,
+                                "box" to r.box.mapIndexed { i, v ->
+                                    if (i % 2 == 0) v + offX else v + offY
+                                }
+                            )
+                        }
+                        result.success(mapOf("elapsedMs" to outcome.elapsedMs, "lines" to lines))
                     }
                     else -> result.notImplemented()
                 }

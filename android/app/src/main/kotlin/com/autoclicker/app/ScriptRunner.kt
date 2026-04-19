@@ -88,6 +88,7 @@ class ScriptRunner(
             "checkColor" -> doCheckColor(a)
             "findColor"  -> doFindColor(a)
             "findImage"  -> doFindImage(a)
+            "findText"   -> doFindText(a)
             "loop" -> {
                 val n = a.optInt("times", 1)
                 val inner = a.optJSONArray("actions") ?: return
@@ -175,6 +176,38 @@ class ScriptRunner(
             log("找图 未命中")
             a.optJSONArray("onNotFound")?.let { runActions(it) }
         }
+    }
+
+    private suspend fun doFindText(a: JSONObject) {
+        val cap = ScreenCaptureService.instance ?: run { log("✖ 未授权截屏"); return }
+        val scr = cap.acquireBitmap() ?: run { log("✖ 截屏失败"); return }
+        if (!OcrPredictor.isReady()) {
+            log("OCR 模型首次加载中…")
+            if (!OcrPredictor.init(ctx)) { log("✖ OCR 加载失败"); return }
+        }
+        val pat = a.optString("text")
+        if (pat.isBlank()) { log("✖ 找字:缺 text 参数"); return }
+        val contains = a.optBoolean("contains", true)
+        val roi = parseRoi(a.optJSONArray("roi"))
+
+        val outcome = if (roi != null) OcrPredictor.recognizeRoi(scr, roi)
+                      else OcrPredictor.recognize(scr)
+        val needle = pat.trim()
+        val hit = outcome.lines.firstOrNull {
+            if (contains) it.text.contains(needle, ignoreCase = true)
+            else it.text.trim().equals(needle, ignoreCase = true)
+        }
+        if (hit == null) {
+            log("找字 '${pat}' 未命中 (${outcome.elapsedMs}ms)")
+            a.optJSONArray("onNotFound")?.let { runActions(it) }
+            return
+        }
+        val offX = roi?.left ?: 0; val offY = roi?.top ?: 0
+        val cx = (hit.centerX() + offX).toFloat()
+        val cy = (hit.centerY() + offY).toFloat()
+        log("找字 '${hit.text}' → (${cx.toInt()},${cy.toInt()}) ${outcome.elapsedMs}ms")
+        if (a.optBoolean("clickOnFound")) clickAt(cx, cy)
+        a.optJSONArray("onFound")?.let { runActions(it) }
     }
 
     private suspend fun clickAt(x: Float, y: Float) {

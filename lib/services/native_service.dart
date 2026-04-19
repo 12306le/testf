@@ -1,5 +1,26 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/services.dart';
+
+class OcrLine {
+  final String text;
+  final double score;
+  final List<int> box; // 8 ints: x0,y0,x1,y1,x2,y2,x3,y3
+  OcrLine({required this.text, required this.score, required this.box});
+
+  int get minX => [box[0], box[2], box[4], box[6]].reduce((a, b) => a < b ? a : b);
+  int get minY => [box[1], box[3], box[5], box[7]].reduce((a, b) => a < b ? a : b);
+  int get maxX => [box[0], box[2], box[4], box[6]].reduce((a, b) => a > b ? a : b);
+  int get maxY => [box[1], box[3], box[5], box[7]].reduce((a, b) => a > b ? a : b);
+  int get centerX => (minX + maxX) ~/ 2;
+  int get centerY => (minY + maxY) ~/ 2;
+}
+
+class OcrOutcome {
+  final int elapsedMs;
+  final List<OcrLine> lines;
+  OcrOutcome({required this.elapsedMs, required this.lines});
+}
 
 /// 与 Kotlin 侧通信的统一入口。
 class NativeService {
@@ -61,16 +82,46 @@ class NativeService {
     required int b,
   }) async =>
       await _methods.invokeMethod<String?>('cropTemplate', {
-        'path': path,
-        'l': l, 't': t, 'r': r, 'b': b,
+        'path': path, 'l': l, 't': t, 'r': r, 'b': b,
       });
 
   Future<int?> pickColorAt(int x, int y) async =>
       await _methods.invokeMethod<int?>('pickColorAt', {'x': x, 'y': y});
 
-  /// 启动选点器,color=true 改为选色模式。用户完成选择后通过 events 回传。
   Future<bool> startPicker({bool color = false}) async =>
       (await _methods.invokeMethod<bool>('startPicker', {'color': color})) ?? false;
+
+  // ---------------- OCR ----------------
+  Future<void> initOcr() => _methods.invokeMethod('initOcr');
+
+  Future<OcrOutcome?> ocrRecognizeFile(String path, {List<int>? roi}) async {
+    final r = await _methods.invokeMapMethod<String, dynamic>(
+      'ocrRecognizeFile', {'path': path, if (roi != null) 'roi': roi});
+    return _parseOcr(r);
+  }
+
+  Future<OcrOutcome?> ocrRecognizeFrame({List<int>? roi}) async {
+    final r = await _methods.invokeMapMethod<String, dynamic>(
+      'ocrRecognizeFrame', {if (roi != null) 'roi': roi});
+    return _parseOcr(r);
+  }
+
+  OcrOutcome? _parseOcr(Map<String, dynamic>? m) {
+    if (m == null) return null;
+    final lines = (m['lines'] as List? ?? []).map<OcrLine>((e) {
+      final mm = Map<String, dynamic>.from(e as Map);
+      return OcrLine(
+        text: (mm['text'] ?? '').toString(),
+        score: (mm['score'] as num?)?.toDouble() ?? 0.0,
+        box: ((mm['box'] as List?) ?? const [])
+            .map((x) => (x as num).toInt()).toList(),
+      );
+    }).toList();
+    return OcrOutcome(
+      elapsedMs: (m['elapsedMs'] as num?)?.toInt() ?? 0,
+      lines: lines,
+    );
+  }
 }
 
 class NativeEvent {

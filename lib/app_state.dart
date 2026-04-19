@@ -4,7 +4,7 @@ import 'models/script.dart';
 import 'services/native_service.dart';
 import 'services/storage_service.dart';
 
-/// 全局状态:权限、脚本列表、运行日志。
+/// 全局状态:权限、脚本列表、运行日志、OCR 就绪。
 class AppState extends ChangeNotifier {
   final _storage = ScriptStorage();
   final _native = NativeService.instance;
@@ -14,20 +14,25 @@ class AppState extends ChangeNotifier {
   bool capture = false;
   bool floating = false;
   bool running = false;
+  bool ocr = false;
+  bool ocrLoading = false;
 
   List<Script> scripts = [];
 
   final List<String> logs = [];
   static const int _maxLogs = 400;
 
-  /// 坐标/颜色拾取的一次性等待者
   Completer<Map<String, dynamic>>? _pickerWaiter;
-  String? _pickerExpected; // "point" or "color"
+  String? _pickerExpected;
 
   AppState() {
     _native.ensureListening();
     _native.events.listen(_onEvent);
     _refreshAll();
+    // 后台预加载 OCR 模型,不阻塞启动
+    Future.delayed(const Duration(seconds: 1), () {
+      _native.initOcr();
+    });
   }
 
   Future<void> _refreshAll() async {
@@ -43,6 +48,8 @@ class AppState extends ChangeNotifier {
     capture = s['capture'] ?? false;
     floating = s['floating'] ?? false;
     running = s['running'] ?? false;
+    ocr = s['ocr'] ?? false;
+    ocrLoading = s['ocrLoading'] ?? false;
     notifyListeners();
   }
 
@@ -52,6 +59,10 @@ class AppState extends ChangeNotifier {
         accessibility = e.data['enabled'] == true; break;
       case 'state.capture':
         capture = e.data['running'] == true; break;
+      case 'state.ocr':
+        ocr = e.data['ready'] == true;
+        ocrLoading = e.data['loading'] == true;
+        break;
       case 'runner.state':
         running = e.data['running'] == true; break;
       case 'runner.log':
@@ -80,7 +91,7 @@ class AppState extends ChangeNotifier {
         }
         break;
       case 'floating.run':
-        // 悬浮窗点"运行":若当前有脚本则跑第一个,这里简化为广播提示
+        if (scripts.isNotEmpty) runScript(scripts.first);
         break;
       case 'floating.stop':
         stopScript();
@@ -89,7 +100,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 等悬浮拾取器回一个坐标 (x, y)
   Future<Map<String, dynamic>?> awaitPointPicker() async {
     _pickerWaiter?.complete({});
     _pickerWaiter = Completer<Map<String, dynamic>>();
@@ -106,7 +116,6 @@ class AppState extends ChangeNotifier {
         onTimeout: () { _pickerExpected = null; return {}; });
   }
 
-  // ---- CRUD ----
   Future<void> saveScript(Script s) async {
     await _storage.upsert(s);
     scripts = await _storage.loadAll();
