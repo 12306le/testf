@@ -18,13 +18,17 @@ def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '
 // 下载 Paddle Lite 原生库 + OpenCV,只在首次构建执行
 def thirdParty = file("${projectDir}/third_party")
 def paddleDir = file("${thirdParty}/paddle_lite")
-def opencvDir = file("${thirdParty}/opencv4.1.0")
+// OpenCV 4.1 包里 cmake 硬编码 _IMPORT_PREFIX + "/opencv/opencv4.1.0/<abi>",
+// 所以必须解压到 app/opencv/opencv4.1.0/ 才能匹配 5 层 PATH 上探
+def opencvRoot = file("${projectDir}/opencv")
+def opencvDir = file("${opencvRoot}/opencv4.1.0")
 
 task fetchNativeDeps {
     outputs.dir paddleDir
     outputs.dir opencvDir
     doLast {
         thirdParty.mkdirs()
+        opencvRoot.mkdirs()
         if (!new File(paddleDir, "cxx/include/paddle_api.h").exists()) {
             println "Downloading Paddle Lite cxx libs..."
             def tmp = new File(thirdParty, "paddle.tar.gz")
@@ -36,10 +40,11 @@ task fetchNativeDeps {
         }
         if (!new File(opencvDir, "arm64-v8a/cmake/OpenCVConfig.cmake").exists()) {
             println "Downloading OpenCV 4.1.0..."
-            def tmp = new File(thirdParty, "ocv.tar.gz")
+            def tmp = new File(opencvRoot, "ocv.tar.gz")
             new URL("https://paddle-inference-dist.bj.bcebos.com/opencv4.1.0.tar.gz")
                 .withInputStream { i -> tmp.withOutputStream { o -> o << i } }
-            exec { commandLine 'tar', 'xzf', tmp.absolutePath, '-C', thirdParty.absolutePath }
+            // tarball 顶层目录是 "opencv4.1.0/",解压到 opencvRoot 后就是 opencvRoot/opencv4.1.0/
+            exec { commandLine 'tar', 'xzf', tmp.absolutePath, '-C', opencvRoot.absolutePath }
             tmp.delete()
         }
     }

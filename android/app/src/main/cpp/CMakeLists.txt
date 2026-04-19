@@ -6,7 +6,8 @@ cmake_minimum_required(VERSION 3.10.2)
 
 set(THIRD_PARTY "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party")
 set(PaddleLite_DIR "${THIRD_PARTY}/paddle_lite")
-set(OpenCV_DIR "${THIRD_PARTY}/opencv4.1.0/${ANDROID_ABI}/cmake")
+# OpenCV 包 cmake 依赖 5 层 PATH 上探,必须放在 app/opencv/opencv4.1.0/<abi>/cmake
+set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../opencv/opencv4.1.0/${ANDROID_ABI}/cmake")
 
 include_directories(${PaddleLite_DIR}/cxx/include)
 find_package(OpenCV REQUIRED)
