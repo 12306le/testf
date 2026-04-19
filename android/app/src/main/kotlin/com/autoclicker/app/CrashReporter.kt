@@ -23,10 +23,19 @@ object CrashReporter {
 
     fun install(appContext: Context) {
         val crashDir = File(appContext.filesDir, "crashes").apply { mkdirs() }
+        val stdioLog = File(crashDir, "stdio.log")
 
-        // 1. 先尝试上传之前留下的崩溃文件(包括 native 的)
+        // 1. 先尝试上传之前留下的崩溃文件(包括 native 的)以及 stdio 日志
         Thread {
-            try { uploadAll(appContext, crashDir) } catch (_: Throwable) {}
+            try {
+                if (stdioLog.exists() && stdioLog.length() > 0) {
+                    // 启动时把上一轮 stdio 日志另存上报
+                    val snap = File(crashDir, "stdio_${System.currentTimeMillis()}.log")
+                    stdioLog.copyTo(snap, overwrite = true)
+                    stdioLog.writeText("")  // 清空以便新一轮收集
+                }
+                uploadAll(appContext, crashDir)
+            } catch (_: Throwable) {}
         }.start()
 
         // 2. 注册 Java 未捕获异常处理器
@@ -36,7 +45,13 @@ object CrashReporter {
                 val file = File(crashDir, "java_${System.currentTimeMillis()}.txt")
                 file.writeText(buildReport(appContext, "java", thread.name, err))
                 Log.e(TAG, "saved java crash: ${file.name}")
-                uploadFile(appContext, file)   // 同步上报
+                uploadFile(appContext, file)
+                // 上报 stdio 日志一并上去
+                if (stdioLog.exists() && stdioLog.length() > 0) {
+                    val snap = File(crashDir, "stdio_on_java_${System.currentTimeMillis()}.log")
+                    stdioLog.copyTo(snap, overwrite = true)
+                    uploadFile(appContext, snap)
+                }
             } catch (t: Throwable) {
                 Log.e(TAG, "save/upload failed", t)
             }
@@ -44,11 +59,11 @@ object CrashReporter {
             else exitProcess(2)
         }
 
-        // 3. 让 native 把崩溃文件写到固定路径;load libNative 若成功即自动装 handler
-        //    如果 Native 加载失败,Java handler 会捕获 UnsatisfiedLinkError
+        // 3. 装 native crash handler + 重定向 stdio
         try {
             System.loadLibrary("Native")
             OcrNative.installCrashHandler(File(crashDir, "native.txt").absolutePath)
+            OcrNative.redirectStdio(stdioLog.absolutePath)
         } catch (t: Throwable) {
             val f = File(crashDir, "loadlib_${System.currentTimeMillis()}.txt")
             f.writeText(buildReport(appContext, "loadlib", "main", t))

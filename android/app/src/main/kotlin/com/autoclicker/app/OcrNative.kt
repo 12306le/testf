@@ -34,4 +34,7 @@ object OcrNative {
 
     /** 由 CrashReporter 调用,传一个持久化路径让 native 层 segfault 时把信息写进去。 */
     @JvmStatic external fun installCrashHandler(crashFilePath: String)
+
+    /** 把 native stdout/stderr 重定向到指定文件,抓取 Paddle Lite/OpenCV 的日志。 */
+    @JvmStatic external fun redirectStdio(logFilePath: String): Boolean
 }
